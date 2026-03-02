@@ -109,9 +109,7 @@ body{
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:18px;
-    overflow-x:auto;
-  overflow-y:auto;
-  -webkit-overflow-scrolling: touch;
+  overflow:auto;
   box-shadow:var(--shadow);
 }
 
@@ -131,13 +129,11 @@ body{
 .section-table th,
 .section-table td{
   border:1px solid var(--line);
-  padding:8px 12px;
-  font-size:15px;
-  border:1px solid var(--line);
-  padding:8px 12px;
-  font-size:15px;
+  padding:8px 10px;
+  font-size:14px;
   white-space:nowrap;
   overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .section-table thead th{
@@ -148,25 +144,28 @@ body{
 
 .section-table td.num{text-align:right}
 
-/* product width */
-.section-table th:nth-child(1),
-.section-table td:nth-child(1){
-  width:30%;
+/* column widths desktop */
+.col-product{width:30%}
+.col-packed,.col-tray,.col-total{width:10%}
+.col-time{width:12%}
+
+/* completed row */
+.completed-product-row td{
+  background:#28A745;
+  color:#fff;
+  font-weight:700;
 }
 
-.section-table th:not(:first-child),
-.section-table td:not(:first-child){
-  width: calc(70% / 6);
-}
-
-/* ===== MOBILE MODE ===== */
-
-.mobile-status{ display:none; }
+/* ===== MOBILE COMPACT MODE ===== */
+.mobile-status{display:none}
 
 @media (max-width:768px){
 
-  .packed-status,
-  .tray-status{
+  /* hide heavy columns */
+  .col-packed,
+  .col-tray,
+  .col-packed-status,
+  .col-tray-status{
     display:none !important;
   }
 
@@ -174,21 +173,17 @@ body{
     display:table-cell !important;
   }
 
-  .section-table th:nth-child(1),
-  .section-table td:nth-child(1){
-    width:40%;
-  }
+  /* mobile widths */
+  .col-product{width:45%}
+  .col-total{width:20%}
+  .col-status{width:20%}
+  .col-time{width:15%}
 
-  .section-table th:not(:first-child),
-  .section-table td:not(:first-child){
-    width:auto;
+  .section-table th,
+  .section-table td{
+    font-size:13px;
+    padding:7px 8px;
   }
-}
-
-.completed-product-row td{
-  background:#28A745;
-  color:#fff;
-  font-weight:700;
 }
 
 .empty{
@@ -196,25 +191,6 @@ body{
   text-align:center;
   color:var(--muted);
   font-weight:700;
-}
-
-@media (max-width:768px){
-
-  .section-table{
-    min-width:720px;
-  }
-
-}
-@media (max-width:768px){
-
-  .section-table thead th{
-    font-size:13px;
-    letter-spacing:.3px;
-  }
-
-}
-.section-summary-row td{
-  white-space:nowrap;
 }
 </style>
 </head>
@@ -227,15 +203,9 @@ body{
   <h1 class="hero-title">Master</h1>
 
   <div class="controls">
-    <button id="prevBtn" class="nav-btn">
-      <i class="bi bi-chevron-left"></i>
-    </button>
-
+    <button id="prevBtn" class="nav-btn"><i class="bi bi-chevron-left"></i></button>
     <select id="jumpSelect" class="jump-select"></select>
-
-    <button id="nextBtn" class="nav-btn">
-      <i class="bi bi-chevron-right"></i>
-    </button>
+    <button id="nextBtn" class="nav-btn"><i class="bi bi-chevron-right"></i></button>
   </div>
 </header>
 
@@ -248,27 +218,15 @@ body{
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycby0t1hNhPtflVTcqay2cooBSRawRDt6mgWPyMYisfS8TmqUo47U6nlDhVXhGlJ6g092HA/exec";
 
-let totalSlides=0;
-let isAnimating=false;
-let sectionKeys=[];
-let currentIndex=0;
+let totalSlides=0,isAnimating=false,sectionKeys=[],currentIndex=0;
 
 const slider=document.getElementById("slider");
 const prevBtn=document.getElementById("prevBtn");
 const nextBtn=document.getElementById("nextBtn");
 const jumpSelect=document.getElementById("jumpSelect");
 
-/* helpers */
-
-function normalizeKey(v){
-  return String(v??"").toLowerCase().replace(/[^a-z0-9]/g,"");
-}
-
-function getVal(row,aliases){
-  const keys=aliases.map(normalizeKey);
-  const found=Object.keys(row).find(k=>keys.includes(normalizeKey(k)));
-  return found?row[found]:"";
-}
+function normalizeKey(v){return String(v??"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function getVal(row,a){const k=a.map(normalizeKey);const f=Object.keys(row).find(x=>k.includes(normalizeKey(x)));return f?row[f]:""}
 
 const getSection=r=>String(getVal(r,["section"])).trim();
 const getProduct=r=>String(getVal(r,["product"])).trim();
@@ -283,8 +241,7 @@ const getTime=r=>{
   if(!raw) return "";
   const d=new Date(raw);
   if(isNaN(d)) return raw;
-  return String(d.getHours()).padStart(2,"0")+":"+
-         String(d.getMinutes()).padStart(2,"0");
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 };
 
 const isCompleted=v=>{
@@ -293,56 +250,32 @@ const isCompleted=v=>{
 };
 
 function calculateSectionTotals(rows){
-
-  let packedSum = 0;
-  let traySum = 0;
-  let totalSum = 0;
-
-  let packedCompletedQty = 0;
-  let trayCompletedQty = 0;
-  let totalCompletedQty = 0;
+  let packedSum=0,traySum=0,totalSum=0;
+  let packedCompletedQty=0,trayCompletedQty=0,totalCompletedQty=0;
 
   rows.forEach(r=>{
-    const packed = parseFloat(getPacked(r)) || 0;
-    const tray = parseFloat(getTray(r)) || 0;
-    const total = parseFloat(getTotal(r)) || 0;
+    const packed=parseFloat(getPacked(r))||0;
+    const tray=parseFloat(getTray(r))||0;
+    const total=parseFloat(getTotal(r))||0;
 
-    packedSum += packed;
-    traySum += tray;
-    totalSum += total;
+    packedSum+=packed;
+    traySum+=tray;
+    totalSum+=total;
 
-    if(isCompleted(getPackedStatus(r))){
-      packedCompletedQty += packed;
-    }
-
-    if(isCompleted(getTrayStatus(r))){
-      trayCompletedQty += tray;
-    }
-
-    if(
-      isCompleted(getPackedStatus(r)) &&
-      isCompleted(getTrayStatus(r))
-    ){
-      totalCompletedQty += total;
-    }
+    if(isCompleted(getPackedStatus(r))) packedCompletedQty+=packed;
+    if(isCompleted(getTrayStatus(r))) trayCompletedQty+=tray;
+    if(isCompleted(getPackedStatus(r))&&isCompleted(getTrayStatus(r))) totalCompletedQty+=total;
   });
 
   return {
-    packedSum,
-    traySum,
-    totalSum,
-
     packedCompletedQty,
     trayCompletedQty,
     totalCompletedQty,
-
-    packedBalanceQty: packedSum - packedCompletedQty,
-    trayBalanceQty: traySum - trayCompletedQty,
-    totalBalanceQty: totalSum - totalCompletedQty
+    packedBalanceQty:packedSum-packedCompletedQty,
+    trayBalanceQty:traySum-trayCompletedQty,
+    totalBalanceQty:totalSum-totalCompletedQty
   };
 }
-
-/* grouping */
 
 function groupRows(rows){
   const map=new Map();
@@ -355,172 +288,107 @@ function groupRows(rows){
   return map;
 }
 
-/* ===== table ===== */
-
 function buildTable(rows){
-
-  const totals = calculateSectionTotals(rows);
+  const totals=calculateSectionTotals(rows);
 
   return `
   <table class="section-table">
     <thead>
       <tr>
-        <th>Product</th>
-        <th class="num">Packed</th>
-        <th class="num">Tray</th>
-        <th class="num">Total</th>
-        <th class="packed-status">Packed Status</th>
-        <th class="tray-status">Tray Status</th>
-        <th class="mobile-status">Status</th>
-        <th>Time</th>
+        <th class="col-product">Product</th>
+        <th class="col-packed num">Packed</th>
+        <th class="col-tray num">Tray</th>
+        <th class="col-total num">Total</th>
+        <th class="col-packed-status">Packed Status</th>
+        <th class="col-tray-status">Tray Status</th>
+        <th class="mobile-status col-status">Status</th>
+        <th class="col-time">Time</th>
       </tr>
     </thead>
-
     <tbody>
       ${rows.map(r=>{
         const packedDone=isCompleted(getPackedStatus(r));
         const trayDone=isCompleted(getTrayStatus(r));
-        const done=packedDone && trayDone;
+        const done=packedDone&&trayDone;
         const mobileStatus=done?"COMPLETED":"PENDING";
 
         return `
         <tr class="${done?"completed-product-row":""}">
-          <td>${getProduct(r)||"-"}</td>
-          <td class="num">${getPacked(r)||"0"}</td>
-          <td class="num">${getTray(r)||"0"}</td>
-          <td class="num">${getTotal(r)||"0"}</td>
-          <td class="packed-status">${getPackedStatus(r)||"Pending"}</td>
-          <td class="tray-status">${getTrayStatus(r)||"Pending"}</td>
-          <td class="mobile-status">${mobileStatus}</td>
-          <td>${getTime(r)}</td>
+          <td class="col-product">${getProduct(r)||"-"}</td>
+          <td class="col-packed num">${getPacked(r)||"0"}</td>
+          <td class="col-tray num">${getTray(r)||"0"}</td>
+          <td class="col-total num">${getTotal(r)||"0"}</td>
+          <td class="col-packed-status">${getPackedStatus(r)||"Pending"}</td>
+          <td class="col-tray-status">${getTrayStatus(r)||"Pending"}</td>
+          <td class="mobile-status col-status">${mobileStatus}</td>
+          <td class="col-time">${getTime(r)}</td>
         </tr>`;
       }).join("")}
 
-      <!-- ✅ SUMMARY ROW -->
       <tr class="section-summary-row">
-  <td><strong>COMPLETED–BALANCE</strong></td>
-
-  <td class="num">
-    <strong>
-      ${totals.packedCompletedQty.toFixed(2)}
-      –
-      ${totals.packedBalanceQty.toFixed(2)}
-    </strong>
-  </td>
-
-  <td class="num">
-    <strong>
-      ${totals.trayCompletedQty.toFixed(2)}
-      –
-      ${totals.trayBalanceQty.toFixed(2)}
-    </strong>
-  </td>
-
-  <td class="num">
-    <strong>
-      ${totals.totalCompletedQty.toFixed(2)}
-      –
-      ${totals.totalBalanceQty.toFixed(2)}
-    </strong>
-  </td>
-
-  <td colspan="4"></td>
-</tr>
+        <td class="col-product"><strong>COMPLETED–BALANCE</strong></td>
+        <td class="col-packed num"><strong>${totals.packedCompletedQty.toFixed(2)} – ${totals.packedBalanceQty.toFixed(2)}</strong></td>
+        <td class="col-tray num"><strong>${totals.trayCompletedQty.toFixed(2)} – ${totals.trayBalanceQty.toFixed(2)}</strong></td>
+        <td class="col-total num"><strong>${totals.totalCompletedQty.toFixed(2)} – ${totals.totalBalanceQty.toFixed(2)}</strong></td>
+        <td class="col-packed-status"></td>
+        <td class="col-tray-status"></td>
+      </tr>
     </tbody>
   </table>`;
 }
 
-/* ===== slider ===== */
-
-function updatePosition(animate=true){
-  slider.style.transition=animate
-    ?"transform .45s cubic-bezier(.22,.61,.36,1)"
-    :"none";
+function updatePosition(a=true){
+  slider.style.transition=a?"transform .45s cubic-bezier(.22,.61,.36,1)":"none";
   slider.style.transform=`translateX(-${currentIndex*100}%)`;
 }
 
 function handleLoopEdges(){
-  if(currentIndex===0){
-    slider.style.transition="none";
-    currentIndex=totalSlides;
-    slider.style.transform=`translateX(-${currentIndex*100}%)`;
-  }
-  if(currentIndex===totalSlides+1){
-    slider.style.transition="none";
-    currentIndex=1;
-    slider.style.transform=`translateX(-${currentIndex*100}%)`;
-  }
+  if(currentIndex===0){slider.style.transition="none";currentIndex=totalSlides;updatePosition(false)}
+  if(currentIndex===totalSlides+1){slider.style.transition="none";currentIndex=1;updatePosition(false)}
   jumpSelect.value=currentIndex;
 }
 
 function render(rows){
-  if(!rows.length){
-    slider.innerHTML='<div class="empty">No data</div>';
-    return;
-  }
-
-  const sectionMap=groupRows(rows);
-  const entries=[...sectionMap.entries()];
+  if(!rows.length){slider.innerHTML='<div class="empty">No data</div>';return;}
+  const entries=[...groupRows(rows).entries()];
   sectionKeys=entries.map(e=>e[0]);
 
-  const firstClone=entries[0];
-  const lastClone=entries[entries.length-1];
-
-  slider.innerHTML=[
-    lastClone,
-    ...entries,
-    firstClone
-  ].map(([sec,items])=>`
-    <div class="slide">
-      <article class="section-table-card">
-        <div class="section-head">${sec.toUpperCase()}</div>
-        ${buildTable(items)}
-      </article>
-    </div>
-  `).join("");
+  slider.innerHTML=[entries.at(-1),...entries,entries[0]]
+    .map(([sec,items])=>`
+      <div class="slide">
+        <article class="section-table-card">
+          <div class="section-head">${sec.toUpperCase()}</div>
+          ${buildTable(items)}
+        </article>
+      </div>`).join("");
 
   totalSlides=sectionKeys.length;
   currentIndex=1;
   updatePosition(false);
 
-  jumpSelect.innerHTML=sectionKeys
-    .map((s,i)=>`<option value="${i+1}">${s}</option>`)
-    .join("");
-
+  jumpSelect.innerHTML=sectionKeys.map((s,i)=>`<option value="${i+1}">${s}</option>`).join("");
   jumpSelect.value=currentIndex;
 }
 
-function goTo(index){
+function goTo(i){
   if(isAnimating) return;
   isAnimating=true;
-  currentIndex=index;
+  currentIndex=i;
   updatePosition(true);
-  setTimeout(()=>{
-    handleLoopEdges();
-    isAnimating=false;
-  },460);
+  setTimeout(()=>{handleLoopEdges();isAnimating=false;},460);
 }
 
-/* swipe */
-
 let startX=0;
-slider.addEventListener("touchstart",e=>{
-  startX=e.touches[0].clientX;
-},{passive:true});
-
+slider.addEventListener("touchstart",e=>startX=e.touches[0].clientX,{passive:true});
 slider.addEventListener("touchend",e=>{
   const diff=startX-e.changedTouches[0].clientX;
   if(Math.abs(diff)<40) return;
   diff>0?goTo(currentIndex+1):goTo(currentIndex-1);
 });
 
-/* buttons */
-
 prevBtn.onclick=()=>goTo(currentIndex-1);
 nextBtn.onclick=()=>goTo(currentIndex+1);
 jumpSelect.onchange=e=>goTo(Number(e.target.value));
-
-/* load */
 
 async function load(){
   try{
