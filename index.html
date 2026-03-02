@@ -109,7 +109,7 @@ body{
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:18px;
-  overflow:hidden;
+  overflow:auto;
   box-shadow:var(--shadow);
 }
 
@@ -268,6 +268,56 @@ const isCompleted=v=>{
   return s==="done"||s==="complete"||s==="completed";
 };
 
+function calculateSectionTotals(rows){
+
+  let packedSum = 0;
+  let traySum = 0;
+  let totalSum = 0;
+
+  let packedCompletedQty = 0;
+  let trayCompletedQty = 0;
+  let totalCompletedQty = 0;
+
+  rows.forEach(r=>{
+    const packed = parseFloat(getPacked(r)) || 0;
+    const tray = parseFloat(getTray(r)) || 0;
+    const total = parseFloat(getTotal(r)) || 0;
+
+    packedSum += packed;
+    traySum += tray;
+    totalSum += total;
+
+    if(isCompleted(getPackedStatus(r))){
+      packedCompletedQty += packed;
+    }
+
+    if(isCompleted(getTrayStatus(r))){
+      trayCompletedQty += tray;
+    }
+
+    if(
+      isCompleted(getPackedStatus(r)) &&
+      isCompleted(getTrayStatus(r))
+    ){
+      totalCompletedQty += total;
+    }
+  });
+
+  return {
+    packedSum,
+    traySum,
+    totalSum,
+
+    packedCompletedQty,
+    trayCompletedQty,
+    totalCompletedQty,
+
+    packedBalanceQty: packedSum - packedCompletedQty,
+    trayBalanceQty: traySum - trayCompletedQty,
+    totalBalanceQty: totalSum - totalCompletedQty
+  };
+}
+
 /* grouping */
 
 function groupRows(rows){
@@ -284,6 +334,9 @@ function groupRows(rows){
 /* ===== table ===== */
 
 function buildTable(rows){
+
+  const totals = calculateSectionTotals(rows);
+
   return `
   <table class="section-table">
     <thead>
@@ -298,6 +351,7 @@ function buildTable(rows){
         <th>Time</th>
       </tr>
     </thead>
+
     <tbody>
       ${rows.map(r=>{
         const packedDone=isCompleted(getPackedStatus(r));
@@ -308,25 +362,46 @@ function buildTable(rows){
         return `
         <tr class="${done?"completed-product-row":""}">
           <td>${getProduct(r)||"-"}</td>
-          <td class="num">${getPacked(r)||"-"}</td>
-          <td class="num">${getTray(r)||"-"}</td>
-          <td class="num">${getTotal(r)||"-"}</td>
-
-          <td class="packed-status">
-            ${getPackedStatus(r)||"-"}
-          </td>
-
-          <td class="tray-status">
-            ${getTrayStatus(r)||"-"}
-          </td>
-
-          <td class="mobile-status">
-            ${mobileStatus}
-          </td>
-
-          <td>${getTime(r)||"-"}</td>
+          <td class="num">${getPacked(r)||"0"}</td>
+          <td class="num">${getTray(r)||"0"}</td>
+          <td class="num">${getTotal(r)||"0"}</td>
+          <td class="packed-status">${getPackedStatus(r)||"Pending"}</td>
+          <td class="tray-status">${getTrayStatus(r)||"Pending"}</td>
+          <td class="mobile-status">${mobileStatus}</td>
+          <td>${getTime(r)}</td>
         </tr>`;
       }).join("")}
+
+      <!-- ✅ SUMMARY ROW -->
+      <tr class="section-summary-row">
+  <td><strong>COMPLETED–BALANCE</strong></td>
+
+  <td class="num">
+    <strong>
+      ${totals.packedCompletedQty.toFixed(2)}
+      –
+      ${totals.packedBalanceQty.toFixed(2)}
+    </strong>
+  </td>
+
+  <td class="num">
+    <strong>
+      ${totals.trayCompletedQty.toFixed(2)}
+      –
+      ${totals.trayBalanceQty.toFixed(2)}
+    </strong>
+  </td>
+
+  <td class="num">
+    <strong>
+      ${totals.totalCompletedQty.toFixed(2)}
+      –
+      ${totals.totalBalanceQty.toFixed(2)}
+    </strong>
+  </td>
+
+  <td colspan="4"></td>
+</tr>
     </tbody>
   </table>`;
 }
