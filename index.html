@@ -19,7 +19,6 @@
   --muted:#556981;
   --line:#c9d8eb;
   --accent:#1e6fd9;
-  --accent-soft:#e4efff;
   --shadow:0 8px 20px rgba(22,56,94,.14);
 }
 
@@ -42,8 +41,6 @@ body{
   height:100vh;
 }
 
-/* ===== HERO ===== */
-
 .hero{
   background:linear-gradient(145deg,#ffffff,#eef5ff);
   border:1px solid var(--line);
@@ -53,7 +50,6 @@ body{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:12px;
 }
 
 .hero-title{
@@ -62,8 +58,6 @@ body{
   font-size:26px;
   font-weight:800;
 }
-
-/* ===== CONTROLS ===== */
 
 .controls{
   display:flex;
@@ -84,10 +78,6 @@ body{
   justify-content:center;
 }
 
-.nav-btn:hover{
-  background:#e7f0ff;
-}
-
 .jump-select{
   border:1px solid var(--line);
   background:white;
@@ -95,8 +85,6 @@ body{
   border-radius:8px;
   font-weight:600;
 }
-
-/* ===== SLIDER ===== */
 
 .viewer{
   margin-top:12px;
@@ -111,8 +99,6 @@ body{
   transition:transform .45s cubic-bezier(.22,.61,.36,1);
 }
 
-/* ===== CARD ===== */
-
 .slide{
   min-width:100%;
   padding:4px;
@@ -123,7 +109,7 @@ body{
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:18px;
-  overflow:auto;
+  overflow:hidden;
   box-shadow:var(--shadow);
 }
 
@@ -132,7 +118,6 @@ body{
   padding:10px 14px;
   font-weight:800;
   color:#133a67;
-  letter-spacing:.05em;
 }
 
 .section-table{
@@ -146,6 +131,8 @@ body{
   border:1px solid var(--line);
   padding:8px 12px;
   font-size:15px;
+  max-width:0;
+  overflow:hidden;
 }
 
 .section-table thead th{
@@ -156,6 +143,7 @@ body{
 
 .section-table td.num{text-align:right}
 
+/* product width */
 .section-table th:nth-child(1),
 .section-table td:nth-child(1){
   width:30%;
@@ -166,9 +154,36 @@ body{
   width: calc(70% / 6);
 }
 
+/* ===== MOBILE MODE ===== */
+
+.mobile-status{ display:none; }
+
+@media (max-width:768px){
+
+  .packed-status,
+  .tray-status{
+    display:none !important;
+  }
+
+  .mobile-status{
+    display:table-cell !important;
+  }
+
+  .section-table th:nth-child(1),
+  .section-table td:nth-child(1){
+    width:40%;
+  }
+
+  .section-table th:not(:first-child),
+  .section-table td:not(:first-child){
+    width:auto;
+  }
+}
+
 .completed-product-row td{
   background:#28A745;
   color:#fff;
+  font-weight:700;
 }
 
 .empty{
@@ -184,44 +199,42 @@ body{
 
 <main class="page">
 
-  <header class="hero">
-    <h1 class="hero-title">
-      Master
-    </h1>
+<header class="hero">
+  <h1 class="hero-title">Master</h1>
 
-    <div class="controls">
-      <button id="prevBtn" class="nav-btn">
-        <i class="bi bi-chevron-left"></i>
-      </button>
+  <div class="controls">
+    <button id="prevBtn" class="nav-btn">
+      <i class="bi bi-chevron-left"></i>
+    </button>
 
-      <select id="jumpSelect" class="jump-select"></select>
+    <select id="jumpSelect" class="jump-select"></select>
 
-      <button id="nextBtn" class="nav-btn">
-        <i class="bi bi-chevron-right"></i>
-      </button>
-    </div>
-  </header>
+    <button id="nextBtn" class="nav-btn">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+  </div>
+</header>
 
-  <section class="viewer">
-    <div id="slider" class="slider"></div>
-  </section>
+<section class="viewer">
+  <div id="slider" class="slider"></div>
+</section>
 
 </main>
 
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycby0t1hNhPtflVTcqay2cooBSRawRDt6mgWPyMYisfS8TmqUo47U6nlDhVXhGlJ6g092HA/exec";
-let totalSlides = 0;
-let isAnimating = false;
+
+let totalSlides=0;
+let isAnimating=false;
+let sectionKeys=[];
+let currentIndex=0;
 
 const slider=document.getElementById("slider");
 const prevBtn=document.getElementById("prevBtn");
 const nextBtn=document.getElementById("nextBtn");
 const jumpSelect=document.getElementById("jumpSelect");
 
-let sectionKeys=[];
-let currentIndex=0;
-
-/* ===== helpers ===== */
+/* helpers */
 
 function normalizeKey(v){
   return String(v??"").toLowerCase().replace(/[^a-z0-9]/g,"");
@@ -240,17 +253,14 @@ const getTray=r=>getVal(r,["tray"]);
 const getTotal=r=>getVal(r,["total"]);
 const getPackedStatus=r=>getVal(r,["packedStatus"]);
 const getTrayStatus=r=>getVal(r,["trayStatus"]);
-const getTime = (r) => {
-  const raw = getVal(r, ["time","timestamp"]);
-  if (!raw) return "";
 
-  const d = new Date(raw);
-  if (isNaN(d)) return String(raw);
-
-  const hours = String(d.getHours()).padStart(2,"0");
-  const minutes = String(d.getMinutes()).padStart(2,"0");
-
-  return `${hours}:${minutes}`;
+const getTime=r=>{
+  const raw=getVal(r,["time","timestamp"]);
+  if(!raw) return "";
+  const d=new Date(raw);
+  if(isNaN(d)) return raw;
+  return String(d.getHours()).padStart(2,"0")+":"+
+         String(d.getMinutes()).padStart(2,"0");
 };
 
 const isCompleted=v=>{
@@ -258,7 +268,7 @@ const isCompleted=v=>{
   return s==="done"||s==="complete"||s==="completed";
 };
 
-/* ===== grouping ===== */
+/* grouping */
 
 function groupRows(rows){
   const map=new Map();
@@ -282,24 +292,38 @@ function buildTable(rows){
         <th class="num">Packed</th>
         <th class="num">Tray</th>
         <th class="num">Total</th>
-        <th>Packed Status</th>
-        <th>Tray Status</th>
+        <th class="packed-status">Packed Status</th>
+        <th class="tray-status">Tray Status</th>
+        <th class="mobile-status">Status</th>
         <th>Time</th>
       </tr>
     </thead>
     <tbody>
       ${rows.map(r=>{
-        const packedDone = isCompleted(getPackedStatus(r));
-        const trayDone   = isCompleted(getTrayStatus(r));
-        const done = packedDone && trayDone;
+        const packedDone=isCompleted(getPackedStatus(r));
+        const trayDone=isCompleted(getTrayStatus(r));
+        const done=packedDone && trayDone;
+        const mobileStatus=done?"COMPLETED":"PENDING";
+
         return `
         <tr class="${done?"completed-product-row":""}">
           <td>${getProduct(r)||"-"}</td>
           <td class="num">${getPacked(r)||"-"}</td>
           <td class="num">${getTray(r)||"-"}</td>
           <td class="num">${getTotal(r)||"-"}</td>
-          <td>${getPackedStatus(r)||"-"}</td>
-          <td>${getTrayStatus(r)||"-"}</td>
+
+          <td class="packed-status">
+            ${getPackedStatus(r)||"-"}
+          </td>
+
+          <td class="tray-status">
+            ${getTrayStatus(r)||"-"}
+          </td>
+
+          <td class="mobile-status">
+            ${mobileStatus}
+          </td>
+
           <td>${getTime(r)||"-"}</td>
         </tr>`;
       }).join("")}
@@ -307,57 +331,47 @@ function buildTable(rows){
   </table>`;
 }
 
-/* ===== render ===== */
+/* ===== slider ===== */
 
 function updatePosition(animate=true){
-  slider.style.transition = animate
-    ? "transform .45s cubic-bezier(.22,.61,.36,1)"
-    : "none";
-
-  slider.style.transform = `translateX(-${currentIndex*100}%)`;
+  slider.style.transition=animate
+    ?"transform .45s cubic-bezier(.22,.61,.36,1)"
+    :"none";
+  slider.style.transform=`translateX(-${currentIndex*100}%)`;
 }
 
 function handleLoopEdges(){
-  if (currentIndex === 0) {
-    slider.style.transition = "none";
-    currentIndex = totalSlides;
-    slider.style.transform = `translateX(-${currentIndex*100}%)`;
+  if(currentIndex===0){
+    slider.style.transition="none";
+    currentIndex=totalSlides;
+    slider.style.transform=`translateX(-${currentIndex*100}%)`;
   }
-
-  if (currentIndex === totalSlides + 1) {
-    slider.style.transition = "none";
-    currentIndex = 1;
-    slider.style.transform = `translateX(-${currentIndex*100}%)`;
+  if(currentIndex===totalSlides+1){
+    slider.style.transition="none";
+    currentIndex=1;
+    slider.style.transform=`translateX(-${currentIndex*100}%)`;
   }
-
-  jumpSelect.value = currentIndex;
+  jumpSelect.value=currentIndex;
 }
 
 function render(rows){
   if(!rows.length){
-    slider.innerHTML = '<div class="empty">No data</div>';
-    sectionKeys = [];
+    slider.innerHTML='<div class="empty">No data</div>';
     return;
   }
 
-  const sectionMap = groupRows(rows);
-  const entries = [...sectionMap.entries()];
-  sectionKeys = entries.map(e => e[0]);
+  const sectionMap=groupRows(rows);
+  const entries=[...sectionMap.entries()];
+  sectionKeys=entries.map(e=>e[0]);
 
-  if(!sectionKeys.length){
-    slider.innerHTML = '<div class="empty">No data</div>';
-    return;
-  }
+  const firstClone=entries[0];
+  const lastClone=entries[entries.length-1];
 
-  /* 🔥 create loop clones */
-  const firstClone = entries[0];
-  const lastClone  = entries[entries.length - 1];
-
-  const slidesHtml = [
+  slider.innerHTML=[
     lastClone,
     ...entries,
     firstClone
-  ].map(([sec, items]) => `
+  ].map(([sec,items])=>`
     <div class="slide">
       <article class="section-table-card">
         <div class="section-head">${sec.toUpperCase()}</div>
@@ -366,42 +380,48 @@ function render(rows){
     </div>
   `).join("");
 
-  slider.innerHTML = slidesHtml;
-
-  /* important state */
-  totalSlides = sectionKeys.length;
-  currentIndex = 1; // start on real first slide
-
+  totalSlides=sectionKeys.length;
+  currentIndex=1;
   updatePosition(false);
 
-  /* dropdown sync */
-  jumpSelect.innerHTML = sectionKeys
+  jumpSelect.innerHTML=sectionKeys
     .map((s,i)=>`<option value="${i+1}">${s}</option>`)
     .join("");
 
-  jumpSelect.value = currentIndex;
+  jumpSelect.value=currentIndex;
 }
-
-/* ===== navigation ===== */
 
 function goTo(index){
-  if (isAnimating) return;
-
-  isAnimating = true;
-  currentIndex = index;
+  if(isAnimating) return;
+  isAnimating=true;
+  currentIndex=index;
   updatePosition(true);
-
-  setTimeout(() => {
+  setTimeout(()=>{
     handleLoopEdges();
-    isAnimating = false;
-  }, 460);
+    isAnimating=false;
+  },460);
 }
 
-prevBtn.onclick = () => goTo(currentIndex - 1);
-nextBtn.onclick = () => goTo(currentIndex + 1);
-jumpSelect.onchange = e => goTo(Number(e.target.value));
+/* swipe */
 
-/* ===== load ===== */
+let startX=0;
+slider.addEventListener("touchstart",e=>{
+  startX=e.touches[0].clientX;
+},{passive:true});
+
+slider.addEventListener("touchend",e=>{
+  const diff=startX-e.changedTouches[0].clientX;
+  if(Math.abs(diff)<40) return;
+  diff>0?goTo(currentIndex+1):goTo(currentIndex-1);
+});
+
+/* buttons */
+
+prevBtn.onclick=()=>goTo(currentIndex-1);
+nextBtn.onclick=()=>goTo(currentIndex+1);
+jumpSelect.onchange=e=>goTo(Number(e.target.value));
+
+/* load */
 
 async function load(){
   try{
