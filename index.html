@@ -20,6 +20,7 @@
   --line:#c9d8eb;
   --accent:#1e6fd9;
   --shadow:0 8px 20px rgba(22,56,94,.14);
+  --hero-h:64px; /* updated by JS */
 }
 
 *{box-sizing:border-box}
@@ -34,14 +35,18 @@ body{
     linear-gradient(125deg,var(--bg-1),var(--bg-2));
 }
 
+/* ── layout ── */
 .page{
-  padding:12px;
   display:flex;
   flex-direction:column;
-  height:100vh;
+  height:100dvh;          /* full viewport */
+  padding:12px;
+  gap:12px;
 }
 
+/* ── hero ── */
 .hero{
+  flex-shrink:0;           /* never shrink */
   background:linear-gradient(145deg,#ffffff,#eef5ff);
   border:1px solid var(--line);
   border-radius:22px;
@@ -86,40 +91,49 @@ body{
   font-weight:600;
 }
 
+/* ── scrollable viewer ── */
+/*
+  KEY: the viewer IS the scroll container.
+  Each table's <thead> th uses position:sticky; top:0
+  so it sticks at the TOP OF THIS CONTAINER, not the page.
+  Because every table is a separate <table> element, when
+  the table scrolls out of view its header goes with it,
+  and the next table's header naturally takes over.
+*/
 .viewer{
-  margin-top:12px;
   flex:1;
-  overflow-y:auto;
-  position:relative;
+  overflow-y:auto;         /* ← scroll happens HERE */
+  border-radius:18px;
 }
 
 .slider{
   display:flex;
   flex-direction:column;
   gap:12px;
-  padding:4px;
-}
-
-.slide{
-  min-width:0;
-  padding:0;
+  padding:2px;            
 }
 
 .section-table-card{
-  height:auto;
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:18px;
-  overflow:hidden;
+  overflow:clip;
   box-shadow:var(--shadow);
 }
 
-.section-head{
-  background:#eaf3ff;
+.header-flex{
+  display:flex;
+  justify-content:space-between;
+  background:orange;
   padding:10px 14px;
   font-weight:800;
-  color:#133a67;
+  color:white;
+  position:sticky;
+  top:0;
+  z-index:5;
+  box-shadow:0 2px 4px rgba(22,56,94,.12);
 }
+
 
 .section-table{
   width:100%;
@@ -137,18 +151,25 @@ body{
   text-overflow:ellipsis;
 }
 
+
 .section-table thead th{
   background:#eaf3ff;
   font-weight:800;
   text-transform:uppercase;
+  position:sticky;
+  top:var(--hf-h, 41px);
+  z-index:4;
+  box-shadow:0 2px 6px rgba(22,56,94,.10);
+  border-top:none;
 }
 
 .section-table td.num{text-align:right}
+.section-table td.num strong{font-variant-numeric:tabular-nums}
 
-/* column widths desktop */
+/* column widths */
 .col-product{width:30%}
 .col-packed,.col-tray,.col-total{width:10%}
-.col-time{width:12%}
+.col-packed-time,.col-tray-time{width:15%}
 
 /* completed row */
 .completed-product-row td{
@@ -156,35 +177,27 @@ body{
   color:#fff;
   font-weight:700;
 }
+.section-table tbody td.completed-cell{
+  background:#28A745;
+  color:#fff;
+  font-weight:700;
+}
 
-/* ===== MOBILE COMPACT MODE ===== */
-.mobile-status{display:none}
+/* summary row */
+.section-summary-row td{
+  background:#f0f6ff;
+}
 
-@media (max-width:768px){
-
-  /* hide heavy columns */
+@media(max-width:768px){
   .col-packed,
-  .col-tray,
-  .col-packed-status,
-  .col-tray-status{
-    display:none !important;
-  }
+  .col-tray{display:none !important}
 
-  .mobile-status{
-    display:table-cell !important;
-  }
-
-  /* mobile widths */
   .col-product{width:45%}
   .col-total{width:20%}
-  .col-status{width:20%}
-  .col-time{width:15%}
+  .col-packed-time,.col-tray-time{width:17.5%}
 
   .section-table th,
-  .section-table td{
-    font-size:13px;
-    padding:7px 8px;
-  }
+  .section-table td{font-size:13px;padding:7px 8px}
 }
 
 .empty{
@@ -200,99 +213,95 @@ body{
 
 <main class="page">
 
-<header class="hero">
-  <h1 class="hero-title">Master</h1>
+  <header class="hero" id="hero">
+    <h1 class="hero-title">Master</h1>
 
-  <div class="controls">
-    <button id="prevBtn" class="nav-btn"><i class="bi bi-chevron-up"></i></button>
-    <select id="jumpSelect" class="jump-select"></select>
-    <button id="nextBtn" class="nav-btn"><i class="bi bi-chevron-down"></i></button>
-  </div>
-</header>
+    <div class="controls">
+      <button id="prevBtn" class="nav-btn"><i class="bi bi-chevron-up"></i></button>
+      <select id="jumpSelect" class="jump-select"></select>
+      <button id="nextBtn" class="nav-btn"><i class="bi bi-chevron-down"></i></button>
+    </div>
+  </header>
 
-<section class="viewer">
-  <div id="slider" class="slider"></div>
-</section>
+  <section class="viewer" id="viewer">
+    <div id="slider" class="slider"></div>
+  </section>
 
 </main>
 
 <script>
-const API_URL="https://script.google.com/macros/s/AKfycby0t1hNhPtflVTcqay2cooBSRawRDt6mgWPyMYisfS8TmqUo47U6nlDhVXhGlJ6g092HA/exec";
+const API_URL="https://script.google.com/macros/s/AKfycbxH0urW_lbEsDORFEWp_YfwjAJwtegpPYuC_4LfJ3Rev-yEzZ2K1VH1GUa1Gp302tp_4A/exec";
 const SECTION_ORDER=[
-  "MYSURPA",
-  "SPECIAL MILK",
-  "MILK",
-  "SPECIAL KAJU",
-  "KAJU",
-  "GHEE",
-  "SOANPAPDI",
-  "HALWA",
-  "LADDU",
-  "BITES",
-  "BENGALI",
-  "BAKLAVA"
+  "MYSURPA","SPECIAL MILK","MILK","SPECIAL KAJU","KAJU",
+  "GHEE","SOANPAPDI","HALWA","LADDU","BITES","BENGALI","BAKLAVA"
 ];
 
 let sectionKeys=[],sectionNodes=[],activeIndex=0;
 
-const viewer=document.querySelector(".viewer");
-const slider=document.getElementById("slider");
-const prevBtn=document.getElementById("prevBtn");
-const nextBtn=document.getElementById("nextBtn");
-const jumpSelect=document.getElementById("jumpSelect");
+const viewer   = document.getElementById("viewer");
+const slider   = document.getElementById("slider");
+const prevBtn  = document.getElementById("prevBtn");
+const nextBtn  = document.getElementById("nextBtn");
+const jumpSelect = document.getElementById("jumpSelect");
 
+/* ── helpers ── */
 function normalizeKey(v){return String(v??"").toLowerCase().replace(/[^a-z0-9]/g,"")}
-function getVal(row,a){const k=a.map(normalizeKey);const f=Object.keys(row).find(x=>k.includes(normalizeKey(x)));return f?row[f]:""}
+function getVal(row,a){
+  const k=a.map(normalizeKey);
+  const f=Object.keys(row).find(x=>k.includes(normalizeKey(x)));
+  return f?row[f]:"";
+}
 
-const getSection=r=>String(getVal(r,["section"])).trim();
-const getProduct=r=>String(getVal(r,["product"])).trim();
-const getPacked=r=>getVal(r,["packed"]);
-const getTray=r=>getVal(r,["tray"]);
-const getTotal=r=>getVal(r,["total"]);
-const getPackedStatus=r=>getVal(r,["packedStatus"]);
-const getTrayStatus=r=>getVal(r,["trayStatus"]);
+const getSection     = r=>String(getVal(r,["section"])).trim();
+const getMaster      = r=>String(getVal(r,["master"])).trim();
+const getProduct     = r=>String(getVal(r,["product"])).trim();
+const getPacked      = r=>getVal(r,["packed"]);
+const getTray        = r=>getVal(r,["tray"]);
+const getTotal       = r=>getVal(r,["total"]);
+const getPackedStatus= r=>getVal(r,["packedStatus"]);
+const getTrayStatus  = r=>getVal(r,["trayStatus"]);
+const getPackedTimeRaw = r=>getVal(r,["packedTime","packed time","packed_time","packedtime"]);
+const getTrayTimeRaw   = r=>getVal(r,["trayTime","tray time","tray_time","traytime"]);
 
-const getTime=r=>{
-  const raw=getVal(r,["time","timestamp"]);
+const formatTimeValue=raw=>{
   if(!raw) return "";
   const d=new Date(raw);
-  if(isNaN(d)) return raw;
+  if(isNaN(d)) return String(raw).trim();
   return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 };
+const getTime       = r=>formatTimeValue(getVal(r,["time","timestamp"]));
+const getPackedTime = r=>formatTimeValue(getPackedTimeRaw(r));
+const getTrayTime   = r=>formatTimeValue(getTrayTimeRaw(r));
 
 const isCompleted=v=>{
   const s=String(v||"").toLowerCase();
-  return s==="done"||s==="complete"||s==="completed";
+  return s==="done"||s==="complete"||s==="completed"||s==="packed"||s==="tray";
 };
+const isPackedComplete=r=>isCompleted(getPackedStatus(r))||!!getPackedTime(r);
+const isTrayComplete=r=>isCompleted(getTrayStatus(r))||!!getTrayTime(r);
 
+/* ── totals ── */
 function calculateSectionTotals(rows){
   let packedSum=0,traySum=0,totalSum=0;
-  let packedCompletedQty=0,trayCompletedQty=0,totalCompletedQty=0;
-
+  let packedCQ=0,trayCQ=0,totalCQ=0;
   rows.forEach(r=>{
-    const packed=parseFloat(getPacked(r))||0;
-    const tray=parseFloat(getTray(r))||0;
-    const total=parseFloat(getTotal(r))||0;
-
-    packedSum+=packed;
-    traySum+=tray;
-    totalSum+=total;
-
-    if(isCompleted(getPackedStatus(r))) packedCompletedQty+=packed;
-    if(isCompleted(getTrayStatus(r))) trayCompletedQty+=tray;
-    if(isCompleted(getPackedStatus(r))&&isCompleted(getTrayStatus(r))) totalCompletedQty+=total;
+    const p=parseFloat(getPacked(r))||0;
+    const t=parseFloat(getTray(r))||0;
+    const o=parseFloat(getTotal(r))||0;
+    packedSum+=p; traySum+=t; totalSum+=o;
+    if(isPackedComplete(r)) packedCQ+=p;
+    if(isTrayComplete(r))   trayCQ+=t;
+    if(isPackedComplete(r)&&isTrayComplete(r)) totalCQ+=o;
   });
-
-  return {
-    packedCompletedQty,
-    trayCompletedQty,
-    totalCompletedQty,
-    packedBalanceQty:packedSum-packedCompletedQty,
-    trayBalanceQty:traySum-trayCompletedQty,
-    totalBalanceQty:totalSum-totalCompletedQty
+  return{
+    packedCQ, trayCQ, totalCQ,
+    packedBQ:packedSum-packedCQ,
+    trayBQ:traySum-trayCQ,
+    totalBQ:totalSum-totalCQ
   };
 }
 
+/* ── group & sort ── */
 function groupRows(rows){
   const map=new Map();
   rows.forEach(r=>{
@@ -304,26 +313,24 @@ function groupRows(rows){
   return map;
 }
 
-const sectionOrderRank=new Map(SECTION_ORDER.map((name,i)=>[normalizeKey(name),i]));
+const sectionOrderRank=new Map(SECTION_ORDER.map((n,i)=>[normalizeKey(n),i]));
 
 function sortSectionEntries(entries){
   return entries
-    .map(([sec,items],originalIndex)=>({
-      sec,
-      items,
-      originalIndex,
-      rank:sectionOrderRank.has(normalizeKey(sec))
-        ?sectionOrderRank.get(normalizeKey(sec))
-        :Number.MAX_SAFE_INTEGER
-    }))
-    .sort((a,b)=>(a.rank-b.rank)||(a.originalIndex-b.originalIndex))
+    .map(([sec,items],idx)=>({sec,items,idx,rank:sectionOrderRank.get(normalizeKey(sec))??Number.MAX_SAFE_INTEGER}))
+    .sort((a,b)=>(a.rank-b.rank)||(a.idx-b.idx))
     .map(({sec,items})=>[sec,items]);
 }
 
-function buildTable(rows){
-  const totals=calculateSectionTotals(rows);
+function getMasterLabel(rows){
+  const masters=[...new Set(rows.map(getMaster).filter(Boolean))];
+  return masters.length ? "MASTER: "+masters.map(v=>String(v).toUpperCase()).join(" | ") : "MASTER: –";
+}
 
-  return `
+/* ── build one table ── */
+function buildTable(rows){
+  const t=calculateSectionTotals(rows);
+  return`
   <table class="section-table">
     <thead>
       <tr>
@@ -331,84 +338,82 @@ function buildTable(rows){
         <th class="col-packed num">Packed</th>
         <th class="col-tray num">Tray</th>
         <th class="col-total num">Total</th>
-        <th class="col-packed-status">Packed Status</th>
-        <th class="col-tray-status">Tray Status</th>
-        <th class="mobile-status col-status">Status</th>
-        <th class="col-time">Time</th>
+        <th class="col-packed-time">Packed Time</th>
+        <th class="col-tray-time">Tray Time</th>
       </tr>
     </thead>
     <tbody>
       ${rows.map(r=>{
-        const packedDone=isCompleted(getPackedStatus(r));
-        const trayDone=isCompleted(getTrayStatus(r));
-        const done=packedDone&&trayDone;
-        const mobileStatus=done?"COMPLETED":"PENDING";
-
-        return `
+        const pDone=isPackedComplete(r);
+        const tDone=isTrayComplete(r);
+        const done=pDone&&tDone;
+        const packedTime=getPackedTime(r)||"-";
+        const trayTime=getTrayTime(r)||"-";
+        return`
         <tr class="${done?"completed-product-row":""}">
           <td class="col-product">${getProduct(r)||"-"}</td>
           <td class="col-packed num">${getPacked(r)||"0"}</td>
           <td class="col-tray num">${getTray(r)||"0"}</td>
           <td class="col-total num">${getTotal(r)||"0"}</td>
-          <td class="col-packed-status">${getPackedStatus(r)||"Pending"}</td>
-          <td class="col-tray-status">${getTrayStatus(r)||"Pending"}</td>
-          <td class="mobile-status col-status">${mobileStatus}</td>
-          <td class="col-time">${getTime(r)}</td>
+          <td class="col-packed-time ${pDone&&!done?"completed-cell":""}">${packedTime}</td>
+          <td class="col-tray-time ${tDone&&!done?"completed-cell":""}">${trayTime}</td>
         </tr>`;
       }).join("")}
-
       <tr class="section-summary-row">
-        <td class="col-product"><strong>COMPLETED–BALANCE</strong></td>
-        <td class="col-packed num"><strong>${totals.packedCompletedQty.toFixed(2)} – ${totals.packedBalanceQty.toFixed(2)}</strong></td>
-        <td class="col-tray num"><strong>${totals.trayCompletedQty.toFixed(2)} – ${totals.trayBalanceQty.toFixed(2)}</strong></td>
-        <td class="col-total num"><strong>${totals.totalCompletedQty.toFixed(2)} – ${totals.totalBalanceQty.toFixed(2)}</strong></td>
-        <td class="col-packed-status"></td>
-        <td class="col-tray-status"></td>
-        <td class="col-time"></td>
+        <td class="col-product"><strong>COMPLETED – BALANCE</strong></td>
+        <td class="col-packed num"><strong>${t.packedCQ.toFixed(2)} – ${t.packedBQ.toFixed(2)}</strong></td>
+        <td class="col-tray num"><strong>${t.trayCQ.toFixed(2)} – ${t.trayBQ.toFixed(2)}</strong></td>
+        <td class="col-total num"><strong>${t.totalCQ.toFixed(2)} – ${t.totalBQ.toFixed(2)}</strong></td>
+        <td class="col-packed-time"></td>
+        <td class="col-tray-time"></td>
       </tr>
     </tbody>
   </table>`;
 }
 
+/* ── render ── */
 function render(rows){
   if(!rows.length){
     slider.innerHTML='<div class="empty">No data</div>';
     jumpSelect.innerHTML="";
-    sectionKeys=[];
-    sectionNodes=[];
-    activeIndex=0;
+    sectionKeys=[];sectionNodes=[];activeIndex=0;
     return;
   }
   const entries=sortSectionEntries([...groupRows(rows).entries()]);
   sectionKeys=entries.map(e=>e[0]);
 
   slider.innerHTML=entries.map(([sec,items],i)=>`
-      <div class="slide">
-        <article class="section-table-card" data-index="${i}">
+    <div class="slide">
+      <article class="section-table-card" data-index="${i}">
+        <div class="header-flex">
           <div class="section-head">${sec.toUpperCase()}</div>
-          ${buildTable(items)}
-        </article>
-      </div>`).join("");
+          <div class="section-master">${getMasterLabel(items)}</div>
+        </div>
+        ${buildTable(items)}
+      </article>
+    </div>`).join("");
 
   sectionNodes=[...slider.querySelectorAll(".section-table-card")];
   activeIndex=0;
   jumpSelect.innerHTML=sectionKeys.map((s,i)=>`<option value="${i}">${s}</option>`).join("");
-  jumpSelect.value=String(activeIndex);
+  jumpSelect.value="0";
   viewer.scrollTop=0;
 }
 
+/* ── navigation ── */
 function goTo(i){
   if(!sectionNodes.length) return;
   const next=Math.max(0,Math.min(i,sectionNodes.length-1));
   activeIndex=next;
   jumpSelect.value=String(activeIndex);
-  sectionNodes[activeIndex].scrollIntoView({behavior:"auto",block:"start"});
+  sectionNodes[activeIndex].scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 prevBtn.onclick=()=>goTo(activeIndex-1);
 nextBtn.onclick=()=>goTo(activeIndex+1);
 jumpSelect.onchange=e=>goTo(Number(e.target.value));
 
+/* ── load ── */
 async function load(){
   try{
     const res=await fetch(API_URL);
@@ -420,8 +425,24 @@ async function load(){
 }
 
 load();
+
+
+function setHeaderFlexHeight(){
+  const hf = document.querySelector(".header-flex");
+  if(!hf) return;
+  const h = hf.getBoundingClientRect().height;
+  document.documentElement.style.setProperty("--hf-h", h + "px");
+}
+
+
+const _origRender = render;
+render = function(rows){
+  _origRender(rows);
+  requestAnimationFrame(setHeaderFlexHeight);
+};
+
+window.addEventListener("resize", setHeaderFlexHeight);
 </script>
 
 </body>
 </html>
-
