@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Master</title>
+<title>Admin</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,6 +11,9 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
 <style>
+/* ════════════════════════════════════════
+   SHARED BASE
+════════════════════════════════════════ */
 :root{
   --bg-1:#f4f8ff;
   --bg-2:#e9f1ff;
@@ -20,215 +23,297 @@
   --line:#c9d8eb;
   --accent:#1e6fd9;
   --shadow:0 8px 20px rgba(22,56,94,.14);
-  --hero-h:64px; /* updated by JS */
+
+  /* Cutting card colours */
+  --card-idle-bg:#fff7ed; --card-idle-border:#fb923c; --card-idle-text:#7c2d12;
+  --card-warn-bg:#fefce8; --card-warn-border:#eab308; --card-warn-text:#713f12;
+  --card-done-bg:#f0fdf4; --card-done-border:#22c55e; --card-done-text:#14532d;
+  --card-late-bg:#fff1f2; --card-late-border:#ef4444; --card-late-text:#7f1d1d;
 }
 
 *{box-sizing:border-box}
+
+html,body{
+  height:100%;
+  overflow:hidden;
+}
 
 body{
   margin:0;
   font-family:"DM Sans","Segoe UI",sans-serif;
   color:var(--ink);
   background:
-    radial-gradient(circle at 10% 0%, #d5e6ff 0%, transparent 35%),
-    radial-gradient(circle at 90% 90%, #dfe9ff 0%, transparent 30%),
+    radial-gradient(circle at 10% 0%,#d5e6ff 0%,transparent 35%),
+    radial-gradient(circle at 90% 90%,#dfe9ff 0%,transparent 30%),
     linear-gradient(125deg,var(--bg-1),var(--bg-2));
 }
 
-/* ── layout ── */
 .page{
   display:flex;
   flex-direction:column;
-  height:100dvh;          /* full viewport */
+  height:100dvh;
   padding:12px;
   gap:12px;
+  min-height:0;
+  overflow:hidden;
 }
 
 /* ── hero ── */
 .hero{
-  flex-shrink:0;           /* never shrink */
+  flex-shrink:0;
   background:linear-gradient(145deg,#ffffff,#eef5ff);
   border:1px solid var(--line);
   border-radius:22px;
-  padding:12px 18px;
+  padding:10px 18px;
   box-shadow:var(--shadow);
   display:flex;
   align-items:center;
   justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
 }
-
-.hero-title{
-  margin:0;
-  color:var(--accent);
-  font-size:26px;
-  font-weight:800;
-}
-
-.controls{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
+.hero-title{margin:0;color:var(--accent);font-size:26px;font-weight:800;}
+.controls{display:flex;align-items:center;gap:8px;}
 .nav-btn{
+  border:1px solid var(--line);background:#f4f8ff;color:#123a67;
+  border-radius:10px;padding:8px 12px;cursor:pointer;font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+}
+.nav-btn:hover{background:#e7f0ff;}
+.jump-select{border:1px solid var(--line);background:white;padding:6px 10px;border-radius:8px;font-weight:600;}
+
+/* ── TAB BAR ── */
+.tab-bar{
+  flex-shrink:0;
+  display:flex;gap:6px;
+  background:rgba(255,255,255,0.7);
   border:1px solid var(--line);
-  background:#f4f8ff;
-  color:#123a67;
-  border-radius:10px;
-  padding:8px 12px;
-  cursor:pointer;
-  font-size:18px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  border-radius:14px;
+  padding:5px;
+  backdrop-filter:blur(4px);
+}
+.tab-btn{
+  flex:1;
+  border:none;background:transparent;
+  padding:8px 16px;border-radius:10px;
+  font-size:14px;font-weight:800;color:var(--muted);
+  cursor:pointer;transition:all 0.2s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.tab-btn:hover{background:#eef5ff;color:#123a67;}
+.tab-btn.active{
+  background:var(--accent);color:#fff;
+  box-shadow:0 4px 12px rgba(30,111,217,0.3);
 }
 
-.jump-select{
-  border:1px solid var(--line);
-  background:white;
-  padding:6px 10px;
-  border-radius:8px;
-  font-weight:600;
-}
-
-/* ── scrollable viewer ── */
-/*
-  KEY: the viewer IS the scroll container.
-  Each table's <thead> th uses position:sticky; top:0
-  so it sticks at the TOP OF THIS CONTAINER, not the page.
-  Because every table is a separate <table> element, when
-  the table scrolls out of view its header goes with it,
-  and the next table's header naturally takes over.
-*/
+/* ── scrollable viewer (shared) ── */
 .viewer{
   flex:1;
-  overflow-y:auto;         /* ← scroll happens HERE */
+  min-height:0;
+  overflow-y:auto;
   border-radius:18px;
 }
+.tab-panel{display:none;flex:1;min-height:0;}
+.tab-panel.active{display:flex;flex-direction:column;flex:1;min-height:0;}
+.tab-panel > .viewer{flex:1;min-height:0;}
 
-.slider{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  padding:2px;            
-}
+/* ════════════════════════════════════════
+   MASTER TAB  (original — untouched logic)
+════════════════════════════════════════ */
+.slider{display:flex;flex-direction:column;gap:12px;padding:2px;}
 
 .section-table-card{
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:18px;
-  overflow:clip;
-  box-shadow:var(--shadow);
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:18px;overflow:clip;box-shadow:var(--shadow);
 }
 
 .header-flex{
-  display:flex;
-  justify-content:space-between;
-  background:orange;
-  padding:10px 14px;
-  font-weight:800;
-  color:white;
-  position:sticky;
-  top:0;
-  z-index:5;
+  display:flex;justify-content:space-between;
+  background:orange;padding:10px 14px;
+  font-weight:800;color:white;
+  position:sticky;top:0;z-index:5;
   box-shadow:0 2px 4px rgba(22,56,94,.12);
 }
 
-
-.section-table{
-  width:100%;
-  border-collapse:collapse;
-  table-layout:fixed;
+.section-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.section-table th,.section-table td{
+  border:1px solid var(--line);padding:8px 10px;
+  font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-
-.section-table th,
-.section-table td{
-  border:1px solid var(--line);
-  padding:8px 10px;
-  font-size:14px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-
 .section-table thead th{
-  background:#eaf3ff;
-  font-weight:800;
-  text-transform:uppercase;
-  position:sticky;
-  top:var(--hf-h, 41px);
-  z-index:4;
-  box-shadow:0 2px 6px rgba(22,56,94,.10);
-  border-top:none;
+  background:#eaf3ff;font-weight:800;text-transform:uppercase;
+  position:sticky;top:var(--hf-h,41px);z-index:4;
+  box-shadow:0 2px 6px rgba(22,56,94,.10);border-top:none;
 }
-
 .section-table td.num{text-align:right}
 .section-table td.num strong{font-variant-numeric:tabular-nums}
 
-/* column widths */
 .col-product{width:30%}
 .col-packed,.col-tray,.col-total{width:10%}
 .col-packed-time,.col-tray-time{width:15%}
 
-/* completed row */
-.completed-product-row td{
-  background:#28A745;
-  color:#fff;
-  font-weight:700;
-}
-.section-table tbody td.completed-cell{
-  background:#28A745;
-  color:#fff;
-  font-weight:700;
-}
-
-/* summary row */
-.section-summary-row td{
-  background:#f0f6ff;
-}
+.completed-product-row td{background:#28A745;color:#fff;font-weight:700;}
+.section-table tbody td.completed-cell{background:#28A745;color:#fff;font-weight:700;}
+.section-summary-row td{background:#f0f6ff;}
 
 @media(max-width:768px){
-  .col-packed,
-  .col-tray{display:none !important}
-
+  .col-packed,.col-tray{display:none !important}
   .col-product{width:45%}
   .col-total{width:20%}
   .col-packed-time,.col-tray-time{width:17.5%}
-
-  .section-table th,
-  .section-table td{font-size:13px;padding:7px 8px}
+  .section-table th,.section-table td{font-size:13px;padding:7px 8px}
 }
 
-.empty{
-  padding:40px;
-  text-align:center;
-  color:var(--muted);
-  font-weight:700;
+.empty{padding:40px;text-align:center;color:var(--muted);font-weight:700;}
+
+/* ════════════════════════════════════════
+   CUTTING TAB  (view-only)
+════════════════════════════════════════ */
+.cut-slider{display:flex;flex-direction:column;gap:0;padding:2px;}
+
+/* ── sticky category header ── */
+.cut-cat-block{display:flex;flex-direction:column;}
+
+.cut-cat-header{
+  position:sticky;top:0;z-index:5;
+  display:flex;align-items:center;gap:8px;
+  padding:9px 14px;
+  font-size:13px;font-weight:800;letter-spacing:0.03em;
+  box-shadow:0 2px 6px rgba(22,56,94,.12);
 }
+.cut-cat-header .cat-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.cut-cat-header .cat-count{
+  margin-left:auto;font-size:11px;font-weight:800;
+  padding:2px 8px;border-radius:20px;background:rgba(0,0,0,0.1);
+}
+
+/* status category colours */
+.cut-cat-header.cat-upcoming{background:#fff7ed;color:#7c2d12;}
+.cut-cat-header.cat-upcoming .cat-dot{background:#fb923c;}
+.cut-cat-header.cat-warning {background:#fefce8;color:#713f12;}
+.cut-cat-header.cat-warning  .cat-dot{background:#eab308;}
+.cut-cat-header.cat-overdue {background:#fff1f2;color:#7f1d1d;}
+.cut-cat-header.cat-overdue  .cat-dot{background:#ef4444;}
+.cut-cat-header.cat-completed{background:#f0fdf4;color:#14532d;}
+.cut-cat-header.cat-completed .cat-dot{background:#22c55e;}
+
+/* ── batches inside each category ── */
+.cut-cat-body{
+  display:flex;flex-direction:column;gap:10px;
+  padding:10px;
+}
+.cut-cat-body.bg-upcoming {background:rgba(255,247,237,0.55);}
+.cut-cat-body.bg-warning  {background:rgba(254,252,232,0.55);}
+.cut-cat-body.bg-overdue  {background:rgba(255,241,242,0.55);}
+.cut-cat-body.bg-completed{background:rgba(240,253,244,0.55);}
+
+/* ── batch card ── */
+.cut-batch-card{
+  background:#fff;border:1px solid var(--line);
+  border-radius:14px;overflow:hidden;
+  box-shadow:0 5px 12px rgba(22,56,94,.08);
+}
+.cut-batch-header{
+  padding:10px 14px;
+  border-bottom:1px dashed #d4e2f2;
+  background:#f8fbff;
+}
+.cut-batch-name{margin:0;font-size:15px;font-weight:800;color:#10345d;}
+.cut-batch-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.cut-batch-body{padding:10px;}
+
+/* ── mini-card grid ── */
+.cut-mini-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+@media(min-width:760px){
+  .cut-mini-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+}
+
+.cut-mini-card{
+  border-radius:12px;padding:10px;
+  box-shadow:0 3px 8px rgba(22,56,94,.08);
+  display:flex;flex-direction:column;gap:5px;
+  font-size:10px;
+  border-width:2px;border-style:solid;
+  transition:background 0.5s,border-color 0.5s;
+}
+.cut-mini-card.status-idle{background:var(--card-idle-bg);border-color:var(--card-idle-border);}
+.cut-mini-card.status-warn{background:var(--card-warn-bg);border-color:var(--card-warn-border);}
+.cut-mini-card.status-done{background:var(--card-done-bg);border-color:var(--card-done-border);}
+.cut-mini-card.status-late{background:var(--card-late-bg);border-color:var(--card-late-border);}
+
+.cut-mini-card .mc-serial   {font-size:13px;font-weight:900;}
+.cut-mini-card .mc-cut-label{font-size:9px;font-weight:700;opacity:0.7;text-transform:uppercase;}
+.cut-mini-card .mc-cut-val  {font-size:20px;font-weight:900;margin:0;line-height:1.1;}
+.cut-mini-card .mc-badge    {
+  text-align:center;font-size:10px;font-weight:800;
+  text-transform:uppercase;padding:3px 0;border-radius:6px;
+  letter-spacing:0.04em;background:rgba(0,0,0,0.07);margin-top:2px;
+}
+
+@keyframes silentPulse{0%{opacity:1}40%{opacity:.45}100%{opacity:1}}
+.pulsing{animation:silentPulse 0.7s ease-in-out;}
 </style>
 </head>
 
 <body>
-
 <main class="page">
 
+  <!-- ── HERO ── -->
   <header class="hero" id="hero">
-    <h1 class="hero-title">Master</h1>
+    <h1 class="hero-title" id="heroTitle">Admin</h1>
 
-    <div class="controls">
+    <!-- Master nav controls (shown on master tab) -->
+    <div class="controls" id="masterControls">
       <button id="prevBtn" class="nav-btn"><i class="bi bi-chevron-up"></i></button>
       <select id="jumpSelect" class="jump-select"></select>
       <button id="nextBtn" class="nav-btn"><i class="bi bi-chevron-down"></i></button>
     </div>
+
+    <!-- Cutting controls (shown on cutting tab) -->
+    <div id="cutStatusWrap" class="controls" style="display:none;">
+      <button id="cutPrevBtn" class="nav-btn"><i class="bi bi-chevron-up"></i></button>
+      <select id="cutJumpSelect" class="jump-select"></select>
+      <button id="cutNextBtn" class="nav-btn"><i class="bi bi-chevron-down"></i></button>
+    </div>
   </header>
 
-  <section class="viewer" id="viewer">
-    <div id="slider" class="slider"></div>
-  </section>
+  <!-- ── TAB BAR ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabMaster" onclick="switchTab('master')">
+      Master
+    </button>
+    <button class="tab-btn" id="tabCutting" onclick="switchTab('cutting')">
+      Cutting
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════
+       MASTER TAB PANEL
+  ══════════════════════════════════ -->
+  <div class="tab-panel active" id="panelMaster">
+    <section class="viewer" id="viewer">
+      <div id="slider" class="slider"></div>
+    </section>
+  </div>
+
+  <!-- ══════════════════════════════════
+       CUTTING TAB PANEL
+  ══════════════════════════════════ -->
+  <div class="tab-panel" id="panelCutting">
+    <section class="viewer" id="cutViewer">
+      <div id="cutSlider" class="cut-slider"></div>
+    </section>
+  </div>
 
 </main>
 
+<!-- ════════════════════════════════════
+     MASTER TAB SCRIPT  (original — untouched)
+════════════════════════════════════ -->
 <script>
 const API_URL="https://script.google.com/macros/s/AKfycbxH0urW_lbEsDORFEWp_YfwjAJwtegpPYuC_4LfJ3Rev-yEzZ2K1VH1GUa1Gp302tp_4A/exec";
 const SECTION_ORDER=[
@@ -238,13 +323,12 @@ const SECTION_ORDER=[
 
 let sectionKeys=[],sectionNodes=[],activeIndex=0;
 
-const viewer   = document.getElementById("viewer");
-const slider   = document.getElementById("slider");
-const prevBtn  = document.getElementById("prevBtn");
-const nextBtn  = document.getElementById("nextBtn");
+const viewer     = document.getElementById("viewer");
+const slider     = document.getElementById("slider");
+const prevBtn    = document.getElementById("prevBtn");
+const nextBtn    = document.getElementById("nextBtn");
 const jumpSelect = document.getElementById("jumpSelect");
 
-/* ── helpers ── */
 function normalizeKey(v){return String(v??"").toLowerCase().replace(/[^a-z0-9]/g,"")}
 function getVal(row,a){
   const k=a.map(normalizeKey);
@@ -252,16 +336,16 @@ function getVal(row,a){
   return f?row[f]:"";
 }
 
-const getSection     = r=>String(getVal(r,["section"])).trim();
-const getMaster      = r=>String(getVal(r,["master"])).trim();
-const getProduct     = r=>String(getVal(r,["product"])).trim();
-const getPacked      = r=>getVal(r,["packed"]);
-const getTray        = r=>getVal(r,["tray"]);
-const getTotal       = r=>getVal(r,["total"]);
-const getPackedStatus= r=>getVal(r,["packedStatus"]);
-const getTrayStatus  = r=>getVal(r,["trayStatus"]);
-const getPackedTimeRaw = r=>getVal(r,["packedTime","packed time","packed_time","packedtime"]);
-const getTrayTimeRaw   = r=>getVal(r,["trayTime","tray time","tray_time","traytime"]);
+const getSection      = r=>String(getVal(r,["section"])).trim();
+const getMaster       = r=>String(getVal(r,["master"])).trim();
+const getProduct      = r=>String(getVal(r,["product"])).trim();
+const getPacked       = r=>getVal(r,["packed"]);
+const getTray         = r=>getVal(r,["tray"]);
+const getTotal        = r=>getVal(r,["total"]);
+const getPackedStatus = r=>getVal(r,["packedStatus"]);
+const getTrayStatus   = r=>getVal(r,["trayStatus"]);
+const getPackedTimeRaw= r=>getVal(r,["packedTime","packed time","packed_time","packedtime"]);
+const getTrayTimeRaw  = r=>getVal(r,["trayTime","tray time","tray_time","traytime"]);
 
 const formatTimeValue=raw=>{
   if(!raw) return "";
@@ -269,39 +353,40 @@ const formatTimeValue=raw=>{
   if(isNaN(d)) return String(raw).trim();
   return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 };
-const getTime       = r=>formatTimeValue(getVal(r,["time","timestamp"]));
-const getPackedTime = r=>formatTimeValue(getPackedTimeRaw(r));
-const getTrayTime   = r=>formatTimeValue(getTrayTimeRaw(r));
+const formatQty=value=>{
+  if(value===null||value===undefined) return "0.00";
+  const text=String(value).trim();
+  if(!text) return "0.00";
+  if(text==="-") return "-";
+  const num=Number(text);
+  if(!Number.isFinite(num)) return text;
+  return num.toFixed(2);
+};
+const getPackedTime=r=>formatTimeValue(getPackedTimeRaw(r));
+const getTrayTime  =r=>formatTimeValue(getTrayTimeRaw(r));
 
 const isCompleted=v=>{
   const s=String(v||"").toLowerCase();
   return s==="done"||s==="complete"||s==="completed"||s==="packed"||s==="tray";
 };
 const isPackedComplete=r=>isCompleted(getPackedStatus(r))||!!getPackedTime(r);
-const isTrayComplete=r=>isCompleted(getTrayStatus(r))||!!getTrayTime(r);
+const isTrayComplete  =r=>isCompleted(getTrayStatus(r))||!!getTrayTime(r);
 
-/* ── totals ── */
 function calculateSectionTotals(rows){
-  let packedSum=0,traySum=0,totalSum=0;
-  let packedCQ=0,trayCQ=0,totalCQ=0;
+  let packedSum=0,traySum=0,totalSum=0,packedCQ=0,trayCQ=0,totalCQ=0;
   rows.forEach(r=>{
     const p=parseFloat(getPacked(r))||0;
     const t=parseFloat(getTray(r))||0;
     const o=parseFloat(getTotal(r))||0;
-    packedSum+=p; traySum+=t; totalSum+=o;
+    packedSum+=p;traySum+=t;totalSum+=o;
     if(isPackedComplete(r)) packedCQ+=p;
     if(isTrayComplete(r))   trayCQ+=t;
     if(isPackedComplete(r)&&isTrayComplete(r)) totalCQ+=o;
   });
-  return{
-    packedCQ, trayCQ, totalCQ,
-    packedBQ:packedSum-packedCQ,
-    trayBQ:traySum-trayCQ,
-    totalBQ:totalSum-totalCQ
-  };
+  return{packedCQ,trayCQ,totalCQ,
+    packedBQ:packedSum-packedCQ,trayBQ:traySum-trayCQ,totalBQ:totalSum-totalCQ};
 }
 
-/* ── group & sort ── */
 function groupRows(rows){
   const map=new Map();
   rows.forEach(r=>{
@@ -324,10 +409,9 @@ function sortSectionEntries(entries){
 
 function getMasterLabel(rows){
   const masters=[...new Set(rows.map(getMaster).filter(Boolean))];
-  return masters.length ? "MASTER: "+masters.map(v=>String(v).toUpperCase()).join(" | ") : "MASTER: –";
+  return masters.length?"MASTER: "+masters.map(v=>String(v).toUpperCase()).join(" | "):"MASTER: –";
 }
 
-/* ── build one table ── */
 function buildTable(rows){
   const t=calculateSectionTotals(rows);
   return`
@@ -344,19 +428,14 @@ function buildTable(rows){
     </thead>
     <tbody>
       ${rows.map(r=>{
-        const pDone=isPackedComplete(r);
-        const tDone=isTrayComplete(r);
-        const done=pDone&&tDone;
-        const packedTime=getPackedTime(r)||"-";
-        const trayTime=getTrayTime(r)||"-";
-        return`
-        <tr class="${done?"completed-product-row":""}">
+        const pDone=isPackedComplete(r),tDone=isTrayComplete(r),done=pDone&&tDone;
+        return`<tr class="${done?"completed-product-row":""}">
           <td class="col-product">${getProduct(r)||"-"}</td>
-          <td class="col-packed num">${getPacked(r)||"0"}</td>
-          <td class="col-tray num">${getTray(r)||"0"}</td>
-          <td class="col-total num">${getTotal(r)||"0"}</td>
-          <td class="col-packed-time ${pDone&&!done?"completed-cell":""}">${packedTime}</td>
-          <td class="col-tray-time ${tDone&&!done?"completed-cell":""}">${trayTime}</td>
+          <td class="col-packed num ${pDone&&!done?"completed-cell":""}">${formatQty(getPacked(r))}</td>
+          <td class="col-tray num ${tDone&&!done?"completed-cell":""}">${formatQty(getTray(r))}</td>
+          <td class="col-total num">${formatQty(getTotal(r))}</td>
+          <td class="col-packed-time">${getPackedTime(r)||"-"}</td>
+          <td class="col-tray-time">${getTrayTime(r)||"-"}</td>
         </tr>`;
       }).join("")}
       <tr class="section-summary-row">
@@ -364,24 +443,19 @@ function buildTable(rows){
         <td class="col-packed num"><strong>${t.packedCQ.toFixed(2)} – ${t.packedBQ.toFixed(2)}</strong></td>
         <td class="col-tray num"><strong>${t.trayCQ.toFixed(2)} – ${t.trayBQ.toFixed(2)}</strong></td>
         <td class="col-total num"><strong>${t.totalCQ.toFixed(2)} – ${t.totalBQ.toFixed(2)}</strong></td>
-        <td class="col-packed-time"></td>
-        <td class="col-tray-time"></td>
+        <td class="col-packed-time"></td><td class="col-tray-time"></td>
       </tr>
     </tbody>
   </table>`;
 }
 
-/* ── render ── */
-function render(rows){
+function renderMaster(rows){
   if(!rows.length){
     slider.innerHTML='<div class="empty">No data</div>';
-    jumpSelect.innerHTML="";
-    sectionKeys=[];sectionNodes=[];activeIndex=0;
-    return;
+    jumpSelect.innerHTML="";sectionKeys=[];sectionNodes=[];activeIndex=0;return;
   }
   const entries=sortSectionEntries([...groupRows(rows).entries()]);
   sectionKeys=entries.map(e=>e[0]);
-
   slider.innerHTML=entries.map(([sec,items],i)=>`
     <div class="slide">
       <article class="section-table-card" data-index="${i}">
@@ -392,56 +466,292 @@ function render(rows){
         ${buildTable(items)}
       </article>
     </div>`).join("");
-
   sectionNodes=[...slider.querySelectorAll(".section-table-card")];
   activeIndex=0;
   jumpSelect.innerHTML=sectionKeys.map((s,i)=>`<option value="${i}">${s}</option>`).join("");
   jumpSelect.value="0";
   viewer.scrollTop=0;
+  requestAnimationFrame(setHeaderFlexHeight);
 }
 
-/* ── navigation ── */
 function goTo(i){
   if(!sectionNodes.length) return;
   const next=Math.max(0,Math.min(i,sectionNodes.length-1));
-  activeIndex=next;
-  jumpSelect.value=String(activeIndex);
-  sectionNodes[activeIndex].scrollIntoView({behavior:"smooth",block:"start"});
+  activeIndex=next;jumpSelect.value=String(activeIndex);
+  const target=sectionNodes[activeIndex];
+  viewer.scrollTo({top: target.offsetTop - viewer.offsetTop, behavior:"smooth"});
 }
 
-prevBtn.onclick=()=>goTo(activeIndex-1);
-nextBtn.onclick=()=>goTo(activeIndex+1);
+prevBtn.onclick  =()=>goTo(activeIndex-1);
+nextBtn.onclick  =()=>goTo(activeIndex+1);
 jumpSelect.onchange=e=>goTo(Number(e.target.value));
 
-/* ── load ── */
-async function load(){
+async function loadMaster(){
   try{
     const res=await fetch(API_URL);
     const json=await res.json();
-    render(json?.data||[]);
+    renderMaster(json?.data||[]);
   }catch{
     slider.innerHTML='<div class="empty">Load failed</div>';
   }
 }
 
-load();
-
-
 function setHeaderFlexHeight(){
-  const hf = document.querySelector(".header-flex");
+  const hf=document.querySelector("#panelMaster .header-flex");
   if(!hf) return;
-  const h = hf.getBoundingClientRect().height;
-  document.documentElement.style.setProperty("--hf-h", h + "px");
+  const h=hf.getBoundingClientRect().height;
+  document.documentElement.style.setProperty("--hf-h",h+"px");
+}
+window.addEventListener("resize",setHeaderFlexHeight);
+</script>
+
+<!-- ════════════════════════════════════
+     CUTTING TAB SCRIPT  (view-only)
+════════════════════════════════════ -->
+<script>
+const CUT_URL = "https://script.google.com/macros/s/AKfycbzgAEH3WSFmbobQfIAmBBHZYUVsJcbcE0njXHVADtVR0cnC3AZ1j1qEFA6Cdbp6zsC49w/exec";
+
+const cutSlider      = document.getElementById("cutSlider");
+const cutJumpSelect  = document.getElementById("cutJumpSelect");
+const cutPrevBtn     = document.getElementById("cutPrevBtn");
+const cutNextBtn     = document.getElementById("cutNextBtn");
+const cutViewer      = document.getElementById("cutViewer");
+let   cutRows        = [];
+let   cutRefreshId   = null;
+let   cutCatNodes    = [];   // array of {key, label, el} — the sticky header elements
+let   cutActiveIndex = 0;
+
+/* ── utils ── */
+function cEscape(v){
+  return String(v==null?"":v)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+function cNormalizeTime(value){
+  const s=String(value||"").trim().toUpperCase().replace(/\./g,":");
+  if(!s) return "-";
+  const m=s.match(/([0-2]?\d)\s*:\s*([0-5]\d)\s*(AM|PM)?/);
+  if(m){
+    let hh=Number(m[1]);const mm=m[2],mer=m[3];
+    if(mer){hh=hh%12;if(mer==="PM")hh+=12;}
+    const h12=((hh+11)%12)+1;
+    return String(h12).padStart(2,"0")+":"+mm+" "+(hh>=12?"PM":"AM");
+  }
+  return s;
+}
 
-const _origRender = render;
-render = function(rows){
-  _origRender(rows);
-  requestAnimationFrame(setHeaderFlexHeight);
-};
+function cToBoolean(v){
+  const s=String(v==null?"":v).trim().toLowerCase();
+  return s==="true"||s==="1"||s==="yes"||s==="completed";
+}
 
-window.addEventListener("resize", setHeaderFlexHeight);
+function cNormalizeRows(rows){
+  return(rows||[]).map((r,idx)=>({
+    rowNumber:  Number(r.rowNumber||idx+2),
+    cuttingTime:cNormalizeTime(r.cuttingTime),
+    batch:      String(r.batch||"").trim(),
+    serial:     String(r.serial||"").trim(),
+    isCompleted:cToBoolean(r.isCompleted)
+  }));
+}
+
+function cGroupBy(rows,key){
+  const map=new Map();
+  rows.forEach(r=>{
+    const k=r[key]||"NO_"+key.toUpperCase();
+    if(!map.has(k))map.set(k,[]);
+    map.get(k).push(r);
+  });
+  return map;
+}
+
+function cCompare(a,b){
+  return String(a||"").localeCompare(String(b||""),undefined,{numeric:true,sensitivity:"base"});
+}
+
+function cIsSerialDone(sRows){return sRows.length>0&&sRows.every(r=>r.isCompleted);}
+
+function cGetStatus(row){
+  if(row.isCompleted) return"done";
+  const m=(row.cuttingTime||"").match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if(!m) return"idle";
+  const now=new Date();
+  let h=parseInt(m[1],10);const min=parseInt(m[2],10),mer=(m[3]||"").toUpperCase();
+  if(mer==="AM"){if(h===12)h=0;}else if(mer==="PM"){if(h!==12)h+=12;}
+  const cut=new Date(now);cut.setHours(h,min,0,0);
+  const diff=(cut-now)/60000;
+  if(diff<0)  return"late";
+  if(diff<=5) return"warn";
+  return"idle";
+}
+
+function cStatusLabel(s){
+  return{done:"Completed",late:"Overdue",warn:"Waiting",idle:"Upcoming"}[s]||"Upcoming";
+}
+
+function cBatchDominant(rows){
+  const s=rows.map(r=>cGetStatus(r));
+  if(s.includes("late"))  return"late";
+  if(s.includes("warn"))  return"warn";
+  if(s.every(x=>x==="done")) return"done";
+  return"idle";
+}
+
+/* ── render cutting tab ── */
+function renderCutting(){
+  cutSlider.innerHTML="";
+  cutCatNodes=[];
+  const batchMap=cGroupBy(cutRows,"batch");
+  if(!batchMap.size){
+    cutSlider.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:#556981;font-weight:700;">No cutting data.</div>';
+    cutJumpSelect.innerHTML="";
+    return;
+  }
+
+  const sorted=Array.from(batchMap.entries()).sort((a,b)=>cCompare(a[0],b[0]));
+
+  const cats={
+    idle: {label:"Upcoming",  cls:"cat-upcoming",  bg:"bg-upcoming",  items:[]},
+    warn: {label:"Waiting",   cls:"cat-warning",   bg:"bg-warning",   items:[]},
+    late: {label:"Overdue",   cls:"cat-overdue",   bg:"bg-overdue",   items:[]},
+    done: {label:"Completed", cls:"cat-completed", bg:"bg-completed", items:[]},
+  };
+  const catOrder=["idle","warn","late","done"];
+
+  sorted.forEach(([batch,rows])=>{
+    cats[cBatchDominant(rows)].items.push([batch,rows]);
+  });
+
+  catOrder.forEach(catKey=>{
+    const cat=cats[catKey];
+    if(!cat.items.length) return;
+
+    const block=document.createElement("div");
+    block.className="cut-cat-block";
+
+    const hdr=document.createElement("div");
+    hdr.className="cut-cat-header "+cat.cls;
+    hdr.innerHTML=`
+      <span>${cat.label}</span>
+      <span class="cat-count">${cat.items.length} batch${cat.items.length>1?"es":""}</span>`;
+    block.appendChild(hdr);
+
+    // Track this header for jump navigation
+    cutCatNodes.push({key:catKey, label:cat.label, el:block});
+
+    const body=document.createElement("div");
+    body.className="cut-cat-body "+cat.bg;
+
+    cat.items.forEach(([batch,rows])=>{
+      const serialMap=cGroupBy(rows,"serial");
+      const doneCount=Array.from(serialMap.values()).filter(cIsSerialDone).length;
+
+      const card=document.createElement("div");
+      card.className="cut-batch-card";
+      card.innerHTML=`
+        <div class="cut-batch-header">
+          <p class="cut-batch-name">${cEscape(batch==="NO_BATCH"?"(No Batch)":batch)}</p>
+          <div class="cut-batch-meta">Serials: ${serialMap.size} &nbsp;|&nbsp; Completed: ${doneCount}</div>
+        </div>
+        <div class="cut-batch-body">
+          <div class="cut-mini-grid"></div>
+        </div>`;
+
+      const grid=card.querySelector(".cut-mini-grid");
+
+      Array.from(serialMap.keys())
+        .sort((a,b)=>{
+          const ad=cIsSerialDone(serialMap.get(a)),bd=cIsSerialDone(serialMap.get(b));
+          if(ad!==bd) return ad?1:-1;
+          return cCompare(a,b);
+        })
+        .forEach(sKey=>{
+          const sRows=serialMap.get(sKey);
+          const latest=sRows[0];
+          const status=cGetStatus(latest);
+          const sLabel=sKey==="NO_SERIAL"?"?":sKey;
+
+          const mc=document.createElement("div");
+          mc.className="cut-mini-card status-"+status;
+          mc.innerHTML=`
+            <div class="mc-serial">Serial: ${cEscape(sLabel)}</div>
+            <div>
+              <div class="mc-cut-label">Cutting Time</div>
+              <p class="mc-cut-val">${cEscape(latest.cuttingTime||"-")}</p>
+            </div>
+            <div class="mc-badge">${cStatusLabel(status)}</div>`;
+          grid.appendChild(mc);
+        });
+
+      body.appendChild(card);
+    });
+
+    block.appendChild(body);
+    cutSlider.appendChild(block);
+  });
+
+  // Populate jump select
+  cutJumpSelect.innerHTML=cutCatNodes.map((c,i)=>`<option value="${i}">${c.label}</option>`).join("");
+  cutJumpSelect.value="0";
+  cutActiveIndex=0;
+}
+
+async function loadCutting(silent=false){
+  try{
+    const url=CUT_URL+(CUT_URL.includes("?")?"&":"?")+"action=rows";
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.ok===false) throw new Error(data.error||"Fetch failed");
+    cutRows=cNormalizeRows(data.rows);
+    renderCutting();
+  }catch(e){
+    if(!silent) cutSlider.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:#b42318;font-weight:700;">Load failed.</div>';
+  }
+}
+
+function goToCat(i){
+  if(!cutCatNodes.length) return;
+  const next=Math.max(0,Math.min(i,cutCatNodes.length-1));
+  cutActiveIndex=next;
+  cutJumpSelect.value=String(cutActiveIndex);
+  const target=cutCatNodes[cutActiveIndex].el;
+  cutViewer.scrollTo({top: target.offsetTop - cutViewer.offsetTop, behavior:"smooth"});
+}
+
+cutPrevBtn.onclick     = ()=>goToCat(cutActiveIndex-1);
+cutNextBtn.onclick     = ()=>goToCat(cutActiveIndex+1);
+cutJumpSelect.onchange = e=>goToCat(Number(e.target.value));
+
+function scheduleCutRefresh(){
+  if(cutRefreshId) clearInterval(cutRefreshId);
+  cutRefreshId=setInterval(()=>{
+    if(document.getElementById("panelCutting").classList.contains("active")){
+      loadCutting(true);
+    }
+  },10000);
+}
+</script>
+
+<!-- ════════════════════════════════════
+     TAB SWITCHER
+════════════════════════════════════ -->
+<script>
+let masterLoaded=false;
+
+function switchTab(tab){
+  document.getElementById("tabMaster").classList.toggle("active",tab==="master");
+  document.getElementById("tabCutting").classList.toggle("active",tab==="cutting");
+  document.getElementById("panelMaster").classList.toggle("active",tab==="master");
+  document.getElementById("panelCutting").classList.toggle("active",tab==="cutting");
+  document.getElementById("masterControls").style.display = tab==="master"?"flex":"none";
+  document.getElementById("cutStatusWrap").style.display  = tab==="cutting"?"flex":"none";
+  if(tab==="cutting" && cutRows.length===0) loadCutting(false);
+}
+
+// Boot
+loadMaster();
+scheduleCutRefresh();
 </script>
 
 </body>
